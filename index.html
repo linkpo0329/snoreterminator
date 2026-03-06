@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>打呼終結者 Snore Terminator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            background: #1a1a2e;
+            overflow-x: hidden;
+            padding: 2vh 2vw;
+        }
+
+        .game-container {
+            position: relative;
+            width: min(90vw, 800px);
+            height: min(90vw, 800px);
+            min-width: 280px;
+            min-height: 280px;
+            background: #0f3460;
+            border-radius: 15px;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            aspect-ratio: 1/1;
+            margin-top: 2vh;
+        }
+
+        .game-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .start-screen {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            text-align: center;
+            padding: 5vw;
+            /* 初始畫面底色 - 作為統一基準 */
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        }
+
+        .game-title {
+            font-size: clamp(1.8rem, 7vw, 48px);
+            margin-bottom: 2vw;
+            color: #e94560;
+            text-shadow: 0 0 10px rgba(233, 69, 96, 0.7);
+            letter-spacing: 2px;
+            line-height: 1.2;
+        }
+
+        .game-subtitle {
+            font-size: clamp(0.9rem, 3.5vw, 24px);
+            margin-bottom: 2vw;
+            color: #f1f1f1;
+            line-height: 1.3;
+        }
+
+        .game-description {
+            font-size: clamp(0.75rem, 2.8vw, 18px);
+            margin-bottom: 6vw;
+            color: #d1d1d1;
+            line-height: 1.5;
+            max-width: 95%;
+        }
+
+        .start-button {
+            padding: clamp(0.7rem, 2.5vw, 15px) clamp(1.2rem, 5vw, 40px);
+            font-size: clamp(1.1rem, 3.5vw, 24px);
+            background: #e94560;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(233, 69, 96, 0.4);
+            white-space: nowrap;
+        }
+
+        .start-button:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(233, 69, 96, 0.6);
+            background: #d63353;
+        }
+
+        .game-play {
+            display: none;
+            position: relative;
+        }
+
+        .game-background {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .ui-element {
+            position: absolute;
+            color: white;
+            font-size: clamp(0.9rem, 3.5vw, 28px);
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.5);
+            padding: clamp(0.4rem, 1.8vw, 10px) clamp(0.8rem, 2.5vw, 20px);
+            border-radius: 10px;
+            max-width: 45%;
+            white-space: nowrap;
+        }
+
+        .timer {
+            top: clamp(0.4rem, 1.8vw, 20px);
+            left: clamp(0.4rem, 1.8vw, 20px);
+        }
+
+        .score {
+            top: clamp(0.4rem, 1.8vw, 20px);
+            right: clamp(0.4rem, 1.8vw, 20px);
+        }
+
+        .character {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+
+        .male-character {
+            z-index: 2;
+        }
+
+        .click-area {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: 5;
+            cursor: pointer;
+        }
+
+        /* ========== 統一結果頁背景為初始畫面底色 ========== */
+        /* 打呼終結者結果頁 (40分以上) */
+        .terminator-result {
+            display: none;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            color: white;
+            text-align: center;
+            padding: 4vw;
+            /* 與初始畫面完全相同的背景 */
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding-top: 6vw;
+        }
+
+        /* 聖人等級忍耐者結果頁 (40分及以下) */
+        .patient-result {
+            display: none;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            color: white;
+            text-align: center;
+            padding: 4vw;
+            /* 與初始畫面完全相同的背景 */
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding-top: 6vw;
+        }
+
+        /* 通用結果頁標題樣式 - 區分不同等級的標題色 */
+        .result-title {
+            font-size: clamp(1.3rem, 5vw, 40px);
+            margin-bottom: 4vw;
+            text-shadow: 0 0 10px rgba(0,0,0,0.3);
+            line-height: 1.2;
+        }
+        /* 打呼終結者標題色 */
+        .terminator-result .result-title {
+            color: #e94560;
+        }
+        /* 聖人等級標題色 */
+        .patient-result .result-title {
+            color: #00d2d3;
+        }
+
+        .result-score {
+            font-size: clamp(1.1rem, 4.5vw, 32px);
+            margin-bottom: 3vw;
+            text-shadow: 0 0 8px rgba(0,0,0,0.2);
+        }
+
+        .result-rank {
+            font-size: clamp(0.95rem, 4vw, 28px);
+            margin-bottom: 3vw;
+            padding: clamp(0.4rem, 1.8vw, 10px) clamp(0.8rem, 3.5vw, 30px);
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            max-width: 90%;
+            white-space: nowrap;
+        }
+        /* 打呼終結者等級背景色 */
+        .terminator-result .result-rank {
+            background: rgba(233, 69, 96, 0.2);
+        }
+        /* 聖人等級背景色 */
+        .patient-result .result-rank {
+            background: rgba(0, 210, 211, 0.2);
+        }
+
+        .rank-description {
+            font-size: clamp(0.75rem, 2.8vw, 18px);
+            margin-bottom: 4vw;
+            color: #f8f8f8;
+            max-width: 95%;
+            line-height: 1.6;
+            white-space: pre-line;
+            text-shadow: 0 0 5px rgba(0,0,0,0.2);
+        }
+
+        .health-tip {
+            font-size: clamp(0.7rem, 2.3vw, 16px);
+            margin-bottom: 6vw;
+            color: #f0f0f0;
+            max-width: 95%;
+            line-height: 1.6;
+            padding: clamp(0.7rem, 1.8vw, 15px);
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            white-space: pre-line;
+        }
+
+        .button-container {
+            display: flex;
+            gap: clamp(0.7rem, 2.5vw, 20px);
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            width: 95%;
+            margin-top: 2vw;
+            margin-bottom: 4vw;
+        }
+
+        /* 統一按鈕樣式 */
+        .restart-button, .booking-button, .respirator-button, .consult-button {
+            padding: clamp(0.7rem, 2.5vw, 15px) clamp(1.2rem, 5vw, 40px);
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            flex-shrink: 0;
+            min-width: 120px;
+            font-size: clamp(0.95rem, 3vw, 20px);
+            text-decoration: none;
+        }
+
+        .restart-button {
+            font-size: clamp(1.1rem, 3.5vw, 24px);
+            background: rgba(255,255,255,0.9);
+            color: #1a1a2e;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .restart-button:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+            background: white;
+        }
+
+        /* 打呼終結者專屬按鈕 */
+        .booking-button {
+            background: #e94560;
+            color: white;
+            box-shadow: 0 5px 15px rgba(233, 69, 96, 0.2);
+        }
+
+        .booking-button:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(233, 69, 96, 0.4);
+            background: #d63353;
+        }
+
+        /* 聖人等級忍耐者專屬按鈕 */
+        .consult-button {
+            background: #00d2d3;
+            color: white;
+            box-shadow: 0 5px 15px rgba(0, 210, 211, 0.2);
+        }
+
+        .consult-button:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 210, 211, 0.4);
+            background: #00b8b9;
+        }
+
+        /* 通用呼吸器按鈕 */
+        .respirator-button {
+            background: #6c5ce7;
+            color: white;
+            box-shadow: 0 5px 15px rgba(108, 92, 231, 0.2);
+        }
+
+        .respirator-button:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(108, 92, 231, 0.4);
+            background: #5848d7;
+        }
+
+        .particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        .shake {
+            animation: shake 0.2s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
+        @media screen and (max-aspect-ratio: 1/1) and (orientation: landscape) {
+            .game-container {
+                width: min(85vh, 800px);
+                height: min(85vh, 800px);
+                margin-top: 1vh;
+            }
+            
+            .terminator-result, .patient-result {
+                padding-top: 2vh;
+                justify-content: center;
+            }
+            
+            .health-tip {
+                margin-bottom: 2vh;
+            }
+            
+            .button-container {
+                margin-bottom: 2vh;
+            }
+        }
+
+        @media screen and (max-width: 320px) {
+            .game-container {
+                min-width: 260px;
+                min-height: 260px;
+            }
+            
+            .restart-button, .booking-button, .respirator-button, .consult-button {
+                min-width: 100px;
+                padding: clamp(0.6rem, 2vw, 12px) clamp(1rem, 4vw, 30px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container" id="gameContainer">
+        <!-- 開始畫面 -->
+        <div class="game-screen start-screen" id="startScreen">
+            <h1 class="game-title">打呼終結者</h1>
+            <h2 class="game-subtitle">Snore Terminator | 10秒終結打呼挑戰</h2>
+            <p class="game-description">10秒內快速連擊，將打呼超大聲的枕邊人一掌拍醒</p>
+            <button class="start-button" id="startButton">開始遊戲</button>
+        </div>
+
+        <!-- 遊戲主畫面 -->
+        <div class="game-screen game-play" id="gamePlay">
+            <div class="ui-element timer" id="timer">Time: 10</div>
+            <div class="ui-element score" id="score">Score: 0</div>
+            <img src="https://cdn-next.cybassets.com/s/files/16976/ckeditor/pictures/content_fd3122b3-6b77-42d0-af59-8323cdc3770c.png" alt="臥室背景" class="game-background" id="gameBackground">
+            <img src="https://cdn-next.cybassets.com/s/files/16976/ckeditor/pictures/content_fd3122b3-6b77-42d0-af59-8323cdc3770c.png" alt="男性打呼狀態" class="character male-character" id="maleCharacter">
+            <div class="click-area" id="clickArea"></div>
+            <div class="particles" id="particles"></div>
+        </div>
+
+        <!-- ========== 1. 打呼終結者結果頁 (40分以上) ========== -->
+        <div class="game-screen terminator-result" id="terminatorResult">
+            <h2 class="result-title">打呼終結者！</h2>
+            <div class="result-score" id="terminatorScore">你的得分：0 分</div>
+            <div class="result-rank">行動派代表</div>
+            <div class="rank-description">你不再忍耐，選擇正面對決
+積極尋找解決方法，是改善睡眠品質的行動派代表</div>
+            <div class="health-tip">你具備主動解決問題的特質
+立即預約居家睡眠檢測
+揪出打呼根源，徹底解決問題</div>
+            <div class="button-container">
+                <button class="restart-button" id="terminatorRestart">再玩一次</button>
+                <a href="https://best-sound.pse.is/8s9zsp" class="booking-button" target="_blank">完成遊戲參加抽獎</a>
+                <a href="https://sleepbest.pse.is/66qhg2" class="respirator-button" target="_blank">預約居家睡眠檢測</a>
+            </div>
+        </div>
+
+        <!-- ========== 2. 聖人等級忍耐者結果頁 (40分及以下) ========== -->
+        <div class="game-screen patient-result" id="patientResult">
+            <h2 class="result-title">聖人等級忍耐者</h2>
+            <div class="result-score" id="patientScore">你的得分：0 分</div>
+            <div class="result-rank">默默承受型高手</div>
+            <div class="rank-description">你擁有超凡的包容力與忍耐度
+面對打呼聲依然能堅持到底，是默默承受型的高手</div>
+            <div class="health-tip">長期忍耐打呼影響睡眠品質
+建議使用忍耐者裝備
+改善睡眠品質</div>
+            <div class="button-container">
+                <button class="restart-button" id="patientRestart">再玩一次</button>
+                <a href="https://best-sound.pse.is/8s9zsp" class="consult-button" target="_blank">完成遊戲參加抽獎</a>
+                <a href="https://best-sound.pse.is/8snm8r" class="respirator-button" target="_blank">忍耐者裝備</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 遊戲變數
+        let gameTime = 10;
+        let score = 0;
+        let timerInterval;
+        let gameRunning = false;
+        
+        // DOM元素
+        const gameContainer = document.getElementById('gameContainer');
+        const startScreen = document.getElementById('startScreen');
+        const gamePlay = document.getElementById('gamePlay');
+        // 兩個獨立的結果頁元素
+        const terminatorResult = document.getElementById('terminatorResult');
+        const patientResult = document.getElementById('patientResult');
+        
+        const startButton = document.getElementById('startButton');
+        // 兩個結果頁的重新開始按鈕
+        const terminatorRestart = document.getElementById('terminatorRestart');
+        const patientRestart = document.getElementById('patientRestart');
+        
+        const timerElement = document.getElementById('timer');
+        const scoreElement = document.getElementById('score');
+        // 兩個結果頁的分數顯示
+        const terminatorScore = document.getElementById('terminatorScore');
+        const patientScore = document.getElementById('patientScore');
+        
+        const clickArea = document.getElementById('clickArea');
+        const maleCharacter = document.getElementById('maleCharacter');
+        const particles = document.getElementById('particles');
+        
+        // 圖片URL配置
+        const imageUrls = {
+            background: 'https://cdn-next.cybassets.com/s/files/16976/ckeditor/pictures/content_fd3122b3-6b77-42d0-af59-8323cdc3770c.png',
+            maleOpen: 'https://cdn-next.cybassets.com/s/files/16976/ckeditor/pictures/content_fd3122b3-6b77-42d0-af59-8323cdc3770c.png',
+            maleClosed: 'https://cdn-next.cybassets.com/s/files/16976/ckeditor/pictures/content_80ef4a47-a87f-499c-853a-19a9606ae90a.png'
+        };
+        
+        // 初始化圖片
+        document.getElementById('gameBackground').src = imageUrls.background;
+        maleCharacter.src = imageUrls.maleOpen;
+        
+        // 事件綁定
+        startButton.addEventListener('click', startGame);
+        terminatorRestart.addEventListener('click', resetGame);
+        patientRestart.addEventListener('click', resetGame);
+        clickArea.addEventListener('click', handleClick);
+        
+        // 開始遊戲函數
+        function startGame() {
+            startScreen.style.display = 'none';
+            gamePlay.style.display = 'block';
+            
+            // 重置遊戲狀態
+            score = 0;
+            gameTime = 10;
+            gameRunning = true;
+            
+            updateScore();
+            updateTimer();
+            
+            timerInterval = setInterval(() => {
+                gameTime--;
+                updateTimer();
+                
+                if (gameTime <= 0) {
+                    endGame();
+                }
+            }, 1000);
+        }
+        
+        // ========== 核心修改：根據分數顯示不同結果頁 ==========
+        function endGame() {
+            gameRunning = false;
+            clearInterval(timerInterval);
+            gamePlay.style.display = 'none';
+            
+            // 隱藏所有結果頁（預防重疊）
+            terminatorResult.style.display = 'none';
+            patientResult.style.display = 'none';
+            
+            // 40分以上：顯示打呼終結者結果頁
+            if (score > 40) {
+                terminatorScore.textContent = `你的得分：${score} 分`;
+                terminatorResult.style.display = 'flex';
+            } 
+            // 40分及以下：顯示聖人等級忍耐者結果頁
+            else {
+                patientScore.textContent = `你的得分：${score} 分`;
+                patientResult.style.display = 'flex';
+            }
+            
+            // 強制重新計算佈局
+            setTimeout(() => {
+                gameContainer.scrollTop = 0;
+            }, 100);
+        }
+        
+        // 重置遊戲函數
+        function resetGame() {
+            // 隱藏所有結果頁
+            terminatorResult.style.display = 'none';
+            patientResult.style.display = 'none';
+            // 顯示開始頁
+            startScreen.style.display = 'flex';
+            // 重置角色狀態
+            maleCharacter.src = imageUrls.maleOpen;
+        }
+        
+        // 處理點擊事件
+        function handleClick() {
+            if (!gameRunning) return;
+            
+            score++;
+            updateScore();
+            
+            gameContainer.classList.add('shake');
+            setTimeout(() => {
+                gameContainer.classList.remove('shake');
+            }, 200);
+            
+            maleCharacter.src = imageUrls.maleClosed;
+            createParticles(event.clientX, event.clientY);
+            
+            setTimeout(() => {
+                maleCharacter.src = imageUrls.maleOpen;
+            }, 300);
+        }
+        
+        function updateTimer() {
+            timerElement.textContent = `Time: ${gameTime}`;
+        }
+        
+        function updateScore() {
+            scoreElement.textContent = `Score: ${score}`;
+        }
+        
+        function createParticles(x, y) {
+            particles.innerHTML = '';
+            const particleCount = Math.floor(Math.random() * 6) + 10;
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                const particleSize = `${Math.random() * clamp(5, 10, 'vw') + clamp(3, 5, 'vw')}px`;
+                
+                particle.style.position = 'absolute';
+                particle.style.width = particleSize;
+                particle.style.height = particleSize;
+                particle.style.backgroundColor = `rgb(${Math.floor(Math.random() * 200 + 55)}, ${Math.floor(Math.random() * 55)}, ${Math.floor(Math.random() * 55)})`;
+                particle.style.borderRadius = '50%';
+                particle.style.left = `${x - gameContainer.getBoundingClientRect().left}px`;
+                particle.style.top = `${y - gameContainer.getBoundingClientRect().top}px`;
+                particle.style.opacity = '1';
+                particle.style.transition = `all 0.6s ease-out`;
+                
+                particles.appendChild(particle);
+                
+                setTimeout(() => {
+                    const angle = Math.random() * Math.PI * 2;
+                    const distance = Math.random() * clamp(30, 50, 'vw') + clamp(10, 20, 'vw');
+                    
+                    particle.style.transform = `translate(${Math.cos(angle) * distance}px, ${Math.sin(angle) * distance}px)`;
+                    particle.style.opacity = '0';
+                    
+                    setTimeout(() => {
+                        particle.remove();
+                    }, 600);
+                }, 10);
+            }
+        }
+        
+        function clamp(min, max, unit) {
+            const viewportSize = unit === 'vw' ? window.innerWidth : window.innerHeight;
+            const value = (viewportSize / 100) * 4;
+            return Math.max(min, Math.min(max, value));
+        }
+        
+        window.addEventListener('resize', () => {
+            const display = gameContainer.style.display;
+            gameContainer.style.display = 'none';
+            setTimeout(() => {
+                gameContainer.style.display = display || 'block';
+            }, 0);
+        });
+
+        window.addEventListener('load', () => {
+            window.dispatchEvent(new Event('resize'));
+        });
+    </script>
+</body>
+</html>
